@@ -16,7 +16,7 @@ on:
         required: false
         type: string
       private_sha:
-        description: Private clash-relay commit SHA requesting this public runtime gate
+        description: Exact MetaUoa/clash-relay commit SHA to validate
         required: false
         type: string
   schedule:
@@ -31,6 +31,7 @@ concurrency:
 
 jobs:
   phase3a-production-contract:
+    if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -38,19 +39,6 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: '3.13'
-      - name: Trace caller
-        if: github.event_name == 'workflow_dispatch'
-        shell: bash
-        env:
-          PRIVATE_SHA: ${{ inputs.private_sha }}
-          REQUEST_ID: ${{ inputs.request_id }}
-        run: |
-          set -euo pipefail
-          if [ -n "${PRIVATE_SHA:-}" ]; then
-            [[ "$PRIVATE_SHA" =~ ^[0-9a-f]{40}$ ]]
-          fi
-          echo "request_id=${REQUEST_ID:-manual}"
-          echo "private_sha=${PRIVATE_SHA:-not-supplied}"
       - name: Verify sanitized snapshot source
         shell: bash
         run: |
@@ -68,6 +56,7 @@ jobs:
         run: python -m pytest tests/test_phase3a_production_contract.py -q
 
   mihomo-core:
+    if: github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -79,3 +68,217 @@ jobs:
         run: |
           python -m pip install pyyaml
           python public-harness/phase3a_core_matrix.py
+
+  private-source-guard:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Validate trusted private-source request
+        shell: bash
+        env:
+          PRIVATE_SHA: ${{ inputs.private_sha }}
+          REQUEST_ID: ${{ inputs.request_id }}
+          CALLER: ${{ github.actor }}
+          OWNER: ${{ github.repository_owner }}
+          PRIVATE_REPO_SSH_KEY: ${{ secrets.PRIVATE_REPO_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          test "$CALLER" = "$OWNER" || {
+            echo "::error::Only the repository owner may dispatch private-source validation"
+            exit 1
+          }
+          [[ "$PRIVATE_SHA" =~ ^[0-9a-f]{40}$ ]] || {
+            echo "::error::private_sha must be an exact 40-character commit SHA"
+            exit 1
+          }
+          test -n "${REQUEST_ID:-}" || {
+            echo "::error::request_id is required for private-source validation"
+            exit 1
+          }
+          test -n "${PRIVATE_REPO_SSH_KEY:-}" || {
+            echo "::error::PRIVATE_REPO_SSH_KEY is required"
+            exit 1
+          }
+          echo "request_id=$REQUEST_ID"
+          echo "private_sha=${PRIVATE_SHA:0:12}"
+
+  private-quality:
+    if: github.event_name == 'workflow_dispatch'
+    needs: private-source-guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout private source read-only
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          repository: MetaUoa/clash-relay
+          ref: ${{ inputs.private_sha }}
+          ssh-key: ${{ secrets.PRIVATE_REPO_SSH_KEY }}
+          persist-credentials: false
+          fetch-depth: 1
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: '3.10'
+      - name: Install development dependencies
+        shell: bash
+        run: python -m pip install -e '.[dev]' > "$RUNNER_TEMP/install.log" 2>&1
+      - name: Ruff
+        shell: bash
+        run: |
+          set +e
+          python -m ruff check . > "$RUNNER_TEMP/ruff.log" 2>&1
+          status=$?
+          if [ "$status" -ne 0 ]; then
+            echo "::error::Ruff failed for the private source. Detailed source output is intentionally suppressed in the public workflow."
+            exit "$status"
+          fi
+          echo "Ruff: PASS"
+      - name: Pytest coverage
+        shell: bash
+        run: |
+          set +e
+          python -m pytest --cov=clash_relay.candidate_diagnostics --cov=clash_relay.subscription_codec --cov=clash_relay.candidate_guard --cov=clash_relay.network_quality --cov=clash_relay.quality_probe --cov=clash_relay.cli --cov=clash_relay.config_secrets --cov=clash_relay.diagnose --cov=clash_relay.gist_publisher --cov=clash_relay.mihomo_controller --cov=clash_relay.mihomo_runtime --cov=clash_relay.mihomo_secret --cov=clash_relay.redact --cov=clash_relay.residential_verify --cov=clash_relay.route_probe --cov=clash_relay.routing_smoke --cov=clash_relay.subscription_analysis --cov=clash_relay.task_runtime --cov=scripts.ci_pipeline --cov=scripts.mihomo_compat_matrix --cov-branch --cov-report=term-missing --cov-fail-under=70 > "$RUNNER_TEMP/pytest.log" 2>&1
+          status=$?
+          if [ "$status" -ne 0 ]; then
+            echo "::error::Pytest/coverage failed for the private source. Detailed source output is intentionally suppressed in the public workflow."
+            exit "$status"
+          fi
+          echo "Pytest coverage: PASS"
+      - name: Native Mihomo API smoke
+        env:
+          MIHOMO_REAL_SMOKE: '1'
+        shell: bash
+        run: |
+          set +e
+          python -m pytest tests/test_mihomo_integration.py -q -k native_auto_fallback_and_empty_reject > "$RUNNER_TEMP/native-smoke.log" 2>&1
+          status=$?
+          if [ "$status" -ne 0 ]; then
+            echo "::error::Native Mihomo API smoke failed for the private source. Detailed source output is intentionally suppressed."
+            exit "$status"
+          fi
+          echo "Native Mihomo API smoke: PASS"
+
+  private-compatibility:
+    if: github.event_name == 'workflow_dispatch'
+    needs: private-source-guard
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python: '3.13'
+          - os: windows-latest
+            python: '3.13'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    steps:
+      - name: Checkout private source read-only
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          repository: MetaUoa/clash-relay
+          ref: ${{ inputs.private_sha }}
+          ssh-key: ${{ secrets.PRIVATE_REPO_SSH_KEY }}
+          persist-credentials: false
+          fetch-depth: 1
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install test dependencies (Linux)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: python -m pip install '.[test]' > "$RUNNER_TEMP/install.log" 2>&1
+      - name: Install test dependencies (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python -m pip install '.[test]' *> "$env:RUNNER_TEMP\install.log"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Full pytest (Linux)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set +e
+          python -m pytest -q > "$RUNNER_TEMP/pytest.log" 2>&1
+          status=$?
+          if [ "$status" -ne 0 ]; then
+            echo "::error::Compatibility pytest failed on ${{ runner.os }}. Detailed source output is intentionally suppressed."
+            exit "$status"
+          fi
+          echo "Compatibility ${{ runner.os }}: PASS"
+      - name: Full pytest (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python -m pytest -q *> "$env:RUNNER_TEMP\pytest.log"
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error 'Compatibility pytest failed on Windows. Detailed source output is intentionally suppressed.'
+            exit $LASTEXITCODE
+          }
+          Write-Output 'Compatibility Windows: PASS'
+      - name: Verify non-editable install entrypoints
+        shell: python
+        run: |
+          import subprocess, sys, tempfile
+          code = 'import clash_relay.candidate_diagnostics,clash_relay.network_quality,clash_relay.quality_probe,clash_relay.subscription_codec,clash_relay.cli,clash_relay.diagnose,clash_relay.routing_smoke'
+          commands = [
+              [sys.executable, '-c', code],
+              ['clash-relay', '--help'],
+              ['clash-relay', 'diagnose', '--help'],
+              ['clash-relay', 'smoke-test', '--help'],
+          ]
+          for command in commands:
+              subprocess.run(
+                  command,
+                  cwd=tempfile.mkdtemp(),
+                  check=True,
+                  stdout=subprocess.DEVNULL,
+                  stderr=subprocess.DEVNULL,
+              )
+
+  private-mihomo-core:
+    if: github.event_name == 'workflow_dispatch'
+    needs: private-source-guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout private source read-only
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          repository: MetaUoa/clash-relay
+          ref: ${{ inputs.private_sha }}
+          ssh-key: ${{ secrets.PRIVATE_REPO_SSH_KEY }}
+          persist-credentials: false
+          fetch-depth: 1
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: '3.13'
+      - name: Install Core matrix dependencies
+        shell: bash
+        run: python -m pip install '.[test]' > "$RUNNER_TEMP/install.log" 2>&1
+      - name: Frozen strict Mihomo Core matrix
+        env:
+          MIHOMO_REAL_SMOKE: '1'
+        shell: bash
+        run: |
+          set +e
+          python scripts/mihomo_compat_matrix_frozen.py --report mihomo-compat-frozen.json --include-flclash > "$RUNNER_TEMP/mihomo-frozen.log" 2>&1
+          status=$?
+          if [ "$status" -ne 0 ]; then
+            echo "::error::Frozen strict Mihomo Core matrix failed. Detailed source output is intentionally suppressed."
+            exit "$status"
+          fi
+          echo "Frozen strict Mihomo Core matrix: PASS"
+      - name: Production strict Mihomo Core matrix
+        env:
+          MIHOMO_REAL_SMOKE: '1'
+        shell: bash
+        run: |
+          set +e
+          python scripts/mihomo_compat_matrix.py --report mihomo-compat-production.json --include-flclash > "$RUNNER_TEMP/mihomo-production.log" 2>&1
+          status=$?
+          if [ "$status" -ne 0 ]; then
+            echo "::error::Production strict Mihomo Core matrix failed. Detailed source output is intentionally suppressed."
+            exit "$status"
+          fi
+          echo "Production strict Mihomo Core matrix: PASS"
