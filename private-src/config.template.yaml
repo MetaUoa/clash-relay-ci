@@ -1,0 +1,136 @@
+# Sanitized Phase3A AI contract snapshot from MetaUoa/clash-relay@f684d894a1374f7f6f5bcc383734aa47e0917dda
+# This file intentionally contains no subscription URLs, Gist credentials, source baseline, or node data.
+proxy-providers:
+  AI:
+    type: inline
+    payload: []
+
+proxy-groups:
+  - name: 🤖 ChatGPT
+    type: select
+    hidden: true
+    proxies:
+      - 🤖 ChatGPT SERVICE-FALLBACK
+    empty-fallback: REJECT
+  - name: 🤖 ChatGPT SERVICE-FALLBACK
+    type: fallback
+    hidden: true
+    proxies:
+      - 🤖 AI
+      - 🤖 ChatGPT NON-U AUTO
+    empty-fallback: REJECT
+  - name: 🤖 ChatGPT NON-U AUTO
+    type: url-test
+    hidden: true
+    use: [AI]
+    filter: '^\[AI:[^]]*O[^]]*\].*.+'
+    exclude-filter: '^\[AI:[^]]*U[^]]*\]'
+    empty-fallback: REJECT
+
+  - name: 🤖 Claude
+    type: select
+    hidden: true
+    proxies:
+      - 🤖 Claude SERVICE-FALLBACK
+    empty-fallback: REJECT
+  - name: 🤖 Claude SERVICE-FALLBACK
+    type: fallback
+    hidden: true
+    proxies:
+      - 🤖 AI
+      - 🤖 Claude NON-U AUTO
+    empty-fallback: REJECT
+  - name: 🤖 Claude NON-U AUTO
+    type: url-test
+    hidden: true
+    use: [AI]
+    filter: '^\[AI:[^]]*C[^]]*\].*.+'
+    exclude-filter: '^\[AI:[^]]*U[^]]*\]'
+    empty-fallback: REJECT
+
+  - name: 🤖 Gemini
+    type: select
+    hidden: true
+    proxies:
+      - 🤖 Gemini SERVICE-FALLBACK
+    empty-fallback: REJECT
+  - name: 🤖 Gemini SERVICE-FALLBACK
+    type: fallback
+    hidden: true
+    proxies:
+      - 🤖 AI
+      - 🤖 Gemini NON-U AUTO
+    empty-fallback: REJECT
+  - name: 🤖 Gemini NON-U AUTO
+    type: url-test
+    hidden: true
+    use: [AI]
+    filter: '^\[AI:[^]]*G[^]]*\].*.+'
+    exclude-filter: '^\[AI:[^]]*U[^]]*\]'
+    empty-fallback: REJECT
+
+  - name: 🤖 Grok
+    type: select
+    hidden: true
+    proxies:
+      - 🤖 Grok SERVICE-FALLBACK
+    empty-fallback: REJECT
+  - name: 🤖 Grok SERVICE-FALLBACK
+    type: fallback
+    hidden: true
+    proxies:
+      - 🤖 AI
+      - 🤖 Grok NON-U AUTO
+    empty-fallback: REJECT
+  - name: 🤖 Grok NON-U AUTO
+    type: url-test
+    hidden: true
+    use: [AI]
+    filter: '^\[AI:[^]]*X[^]]*\].*.+'
+    exclude-filter: '^\[AI:[^]]*U[^]]*\]'
+    empty-fallback: REJECT
+
+  - name: 🤖 AI
+    type: select
+    proxies:
+      - 🤖 AI SERVICE-FALLBACK
+      - 🇯🇵 AI AUTO
+      - 🇸🇬 AI AUTO
+      - 🇺🇸 AI AUTO
+      - 🌍 AI AUTO
+    empty-fallback: REJECT
+  - name: 🤖 AI SERVICE-FALLBACK
+    type: fallback
+    hidden: true
+    proxies:
+      - 🇯🇵 AI AUTO
+      - 🇸🇬 AI AUTO
+      - 🇺🇸 AI AUTO
+      - 🌍 AI AUTO
+    empty-fallback: REJECT
+
+  - name: 🇯🇵 AI AUTO
+    type: url-test
+    hidden: true
+    use: [AI]
+    filter: '^\[AI:[^]]*U[^]]*\].*(?i:🇯🇵|日本|东京|東京|大阪|JP|JPN|TYO|NRT|KIX|OSA)'
+    empty-fallback: REJECT
+  - name: 🇸🇬 AI AUTO
+    type: url-test
+    hidden: true
+    use: [AI]
+    filter: '^\[AI:[^]]*U[^]]*\].*(?i:🇸🇬|新加坡|狮城|獅城|SG|SGP|SIN)'
+    empty-fallback: REJECT
+  - name: 🇺🇸 AI AUTO
+    type: url-test
+    hidden: true
+    use: [AI]
+    filter: '^\[AI:[^]]*U[^]]*\].*(?i:🇺🇸|美国|美國|US|USA|LAX|SJC|SFO|SEA|NYC|JFK|IAD)'
+    empty-fallback: REJECT
+  - name: 🌍 AI AUTO
+    type: url-test
+    hidden: true
+    use: [AI]
+    filter: '^\[AI:[^]]*U[^]]*\].*.+'
+    exclude-filter: '(?i:🇯🇵|日本|东京|東京|大阪|JP|JPN|TYO|NRT|KIX|OSA|🇸🇬|新加坡|狮城|獅城|SG|SGP|SIN|🇺🇸|美国|美國|US|USA|LAX|SJC|SFO|SEA|NYC|JFK|IAD)'
+    empty-fallback: REJECT
