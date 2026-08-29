@@ -79,7 +79,7 @@ def _frozen_generic_ai_contract(**_: object) -> None:
         service_fallback = groups[fallback_name]
         assert service_fallback.get("type") == "fallback"
         assert service_fallback.get("hidden") is True
-        assert service_fallback.get("proxies") == ["🤖 AI", supplement_name]
+        assert service_fallback.get("proxies") == [*_GENERIC_AI_COUNTRY_GROUPS, supplement_name]
         assert service_fallback.get("empty-fallback") == "REJECT"
 
         supplement = groups[supplement_name]
