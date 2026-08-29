@@ -1,4 +1,4 @@
-# Sanitized Phase3A AI contract snapshot from MetaUoa/clash-relay@f684d894a1374f7f6f5bcc383734aa47e0917dda
+# Proposed Phase3A U-primary runtime fix based on MetaUoa/clash-relay@f025333a87d464c1272fa38d8248e39c6ac5392f
 # This file intentionally contains no subscription URLs, Gist credentials, source baseline, or node data.
 proxy-providers:
   AI:
@@ -16,7 +16,10 @@ proxy-groups:
     type: fallback
     hidden: true
     proxies:
-      - 🤖 AI
+      - 🇯🇵 AI AUTO
+      - 🇸🇬 AI AUTO
+      - 🇺🇸 AI AUTO
+      - 🌍 AI AUTO
       - 🤖 ChatGPT NON-U AUTO
     empty-fallback: REJECT
   - name: 🤖 ChatGPT NON-U AUTO
@@ -37,7 +40,10 @@ proxy-groups:
     type: fallback
     hidden: true
     proxies:
-      - 🤖 AI
+      - 🇯🇵 AI AUTO
+      - 🇸🇬 AI AUTO
+      - 🇺🇸 AI AUTO
+      - 🌍 AI AUTO
       - 🤖 Claude NON-U AUTO
     empty-fallback: REJECT
   - name: 🤖 Claude NON-U AUTO
@@ -58,7 +64,10 @@ proxy-groups:
     type: fallback
     hidden: true
     proxies:
-      - 🤖 AI
+      - 🇯🇵 AI AUTO
+      - 🇸🇬 AI AUTO
+      - 🇺🇸 AI AUTO
+      - 🌍 AI AUTO
       - 🤖 Gemini NON-U AUTO
     empty-fallback: REJECT
   - name: 🤖 Gemini NON-U AUTO
@@ -79,7 +88,10 @@ proxy-groups:
     type: fallback
     hidden: true
     proxies:
-      - 🤖 AI
+      - 🇯🇵 AI AUTO
+      - 🇸🇬 AI AUTO
+      - 🇺🇸 AI AUTO
+      - 🌍 AI AUTO
       - 🤖 Grok NON-U AUTO
     empty-fallback: REJECT
   - name: 🤖 Grok NON-U AUTO
