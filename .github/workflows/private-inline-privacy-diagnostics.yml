@@ -1,0 +1,40 @@
+name: Private Inline Privacy Diagnostics
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/private-inline-privacy-diagnostics.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PRIVATE_SHA: 7455778470a08d73e9cab7453982bad89e06316f
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          repository: MetaUoa/clash-relay
+          ref: ${{ env.PRIVATE_SHA }}
+          ssh-key: ${{ secrets.PRIVATE_REPO_SSH_KEY }}
+          persist-credentials: false
+          fetch-depth: 1
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.13'
+      - name: Install test dependencies
+        shell: bash
+        run: python -m pip install '.[test]' > "$RUNNER_TEMP/install.log" 2>&1
+      - name: Redacted failed-test inventory
+        shell: bash
+        run: |
+          set +e
+          python -m pytest -q --tb=no > "$RUNNER_TEMP/pytest.log" 2>&1
+          status=$?
+          grep -E '^(FAILED|ERROR) ' "$RUNNER_TEMP/pytest.log" | head -80 || true
+          tail -n 2 "$RUNNER_TEMP/pytest.log" | sed -E 's#https?://[^ ]+#<url>#g' || true
+          exit "$status"
