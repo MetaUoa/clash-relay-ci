@@ -1,4 +1,4 @@
-# Proposed Phase3A U-primary runtime fix based on MetaUoa/clash-relay@3e3437afc8a84153d14fb002eb41b5e724f6e77a
+# Final Phase3A U-primary topology represented by MetaUoa/clash-relay@d9f05d1a5cd4942db8669795a5086e27d3f531c1
 # This file intentionally contains no subscription URLs, Gist credentials, source baseline, or node data.
 proxy-providers:
   AI:
