@@ -15,8 +15,9 @@ concurrency:
 
 env:
   PRIVATE_REF: refs/pull/16/merge
-  PRIVATE_HEAD: 3e3437afc8a84153d14fb002eb41b5e724f6e77a
+  PRIVATE_HEAD: 97af25014557b80a1f079b37d43df882bd332d02
   EXPECTED_BASE: aab8ffd2145cb0f035aa68dbd3ad00c3e2c1c6df
+  EXPECTED_MERGE: a69349d8b02622e23d9a7782da60416943aad40c
 
 jobs:
   quality:
@@ -35,6 +36,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_MERGE"
           parents=$(git show -s --format='%P' HEAD)
           echo "merge_commit=$(git rev-parse HEAD)"
           echo "$parents" | grep -F "$EXPECTED_BASE"
