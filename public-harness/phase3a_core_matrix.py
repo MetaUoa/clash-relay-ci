@@ -247,14 +247,15 @@ def build_config(
     nodes: list[dict[str, object]],
 ) -> dict[str, object]:
     universal = r"^\[AI:[^]]*U[^]]*\].*"
+    universal_groups = ["🇯🇵 AI AUTO", "🇸🇬 AI AUTO", "🇺🇸 AI AUTO", "🌍 AI AUTO"]
     groups: list[dict[str, object]] = [
         {
             "name": "🤖 AI",
             "type": "select",
-            "proxies": ["🤖 AI SERVICE-FALLBACK", "🇯🇵 AI AUTO", "🇸🇬 AI AUTO", "🇺🇸 AI AUTO", "🌍 AI AUTO"],
+            "proxies": ["🤖 AI SERVICE-FALLBACK", *universal_groups],
             "empty-fallback": "REJECT",
         },
-        fallback("🤖 AI SERVICE-FALLBACK", ["🇯🇵 AI AUTO", "🇸🇬 AI AUTO", "🇺🇸 AI AUTO", "🌍 AI AUTO"], health_url),
+        fallback("🤖 AI SERVICE-FALLBACK", universal_groups, health_url),
         url_test("🇯🇵 AI AUTO", health_url, universal + r"(?i:🇯🇵|日本|JP|JPN|NRT|KIX)"),
         url_test("🇸🇬 AI AUTO", health_url, universal + r"(?i:🇸🇬|新加坡|SG|SGP|SIN)"),
         url_test("🇺🇸 AI AUTO", health_url, universal + r"(?i:🇺🇸|美国|US|USA|LAX|SJC|SFO|SEA|NYC|JFK|IAD)"),
@@ -271,7 +272,11 @@ def build_config(
             "proxies": ["🤖 ChatGPT SERVICE-FALLBACK"],
             "empty-fallback": "REJECT",
         },
-        fallback("🤖 ChatGPT SERVICE-FALLBACK", ["🤖 AI", "🤖 ChatGPT NON-U AUTO"], health_url),
+        fallback(
+            "🤖 ChatGPT SERVICE-FALLBACK",
+            [*universal_groups, "🤖 ChatGPT NON-U AUTO"],
+            health_url,
+        ),
         url_test(
             "🤖 ChatGPT NON-U AUTO",
             health_url,
@@ -338,7 +343,7 @@ def run_scenario(binary: Path, target_port: int, u_port: int, nonu_port: int, *,
             if universal:
                 wait_now(controller, "🇺🇸 AI AUTO", {"[AI:OCGXU][S1] 🇺🇸美国 universal-good"})
                 wait_now(controller, "🤖 AI SERVICE-FALLBACK", {"🇺🇸 AI AUTO"})
-                wait_now(controller, "🤖 ChatGPT SERVICE-FALLBACK", {"🤖 AI"})
+                wait_now(controller, "🤖 ChatGPT SERVICE-FALLBACK", {"🇺🇸 AI AUTO"})
             else:
                 for name in ("🇯🇵 AI AUTO", "🇸🇬 AI AUTO", "🇺🇸 AI AUTO", "🌍 AI AUTO"):
                     wait_now(controller, name, {"REJECT"})
