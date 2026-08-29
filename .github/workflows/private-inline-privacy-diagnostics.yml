@@ -10,11 +10,11 @@ permissions:
   contents: read
 
 jobs:
-  diagnose:
+  diagnose-core:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     env:
-      PRIVATE_SHA: cf923ee443babb3672a2756cd5fa6787c09a8c5b
+      PRIVATE_SHA: b1c6fd770cdb57a9a15e7610862e9489b6d4d11d
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
@@ -26,15 +26,43 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
           python-version: '3.13'
-      - name: Install test dependencies
+      - name: Install Core dependencies
         shell: bash
         run: python -m pip install '.[test]' > "$RUNNER_TEMP/install.log" 2>&1
-      - name: Redacted failed-test inventory
+      - name: Frozen Core redacted diagnostic
         shell: bash
+        env:
+          MIHOMO_REAL_SMOKE: '1'
         run: |
           set +e
-          python -m pytest -q --tb=no > "$RUNNER_TEMP/pytest.log" 2>&1
+          python scripts/mihomo_compat_matrix_frozen.py --report "$RUNNER_TEMP/frozen.json" --include-flclash > "$RUNNER_TEMP/frozen.log" 2>&1
           status=$?
-          grep -E '^(FAILED|ERROR) ' "$RUNNER_TEMP/pytest.log" | head -80 || true
-          tail -n 2 "$RUNNER_TEMP/pytest.log" | sed -E 's#https?://[^ ]+#<url>#g' || true
+          REPORT="$RUNNER_TEMP/frozen.json" python - <<'PY'
+          import json, os, re
+          path = os.environ['REPORT']
+          data = json.load(open(path, encoding='utf-8'))
+          print('mode=' + str(data.get('mode')))
+          for item in data.get('results', []):
+              if item.get('result') in {'PASS', 'UNVERIFIED', 'NOT_AVAILABLE'}:
+                  continue
+              detail = str(item.get('detail') or '')
+              tests = sorted(set(re.findall(r'test=([^;\n]+)', detail)))
+              failed = sorted(set(re.findall(r'(?:FAILED|ERROR)\s+(tests/[^\s]+)', detail)))
+              markers = []
+              for marker in ('CandidateRejected', 'AssertionError', 'ValueError', 'TypeError', 'FileNotFoundError', 'TimeoutExpired'):
+                  if marker in detail:
+                      markers.append(marker)
+              print(json.dumps({
+                  'core': item.get('core'),
+                  'native_policy': item.get('native_policy'),
+                  'provider_health_state': item.get('provider_health_state'),
+                  'provider_fallback': item.get('provider_fallback'),
+                  'provider_http': item.get('provider_http'),
+                  'result': item.get('result'),
+                  'failure_kind': item.get('failure_kind'),
+                  'tests': tests,
+                  'failed': failed,
+                  'markers': markers,
+              }, sort_keys=True))
+          PY
           exit "$status"
