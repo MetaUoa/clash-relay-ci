@@ -5,7 +5,6 @@ on:
     branches: [main]
     paths:
       - .github/workflows/token-probe.yml
-      - source-ref.txt
 
 permissions:
   contents: read
@@ -18,7 +17,7 @@ jobs:
         shell: bash
         env:
           TOKEN: ${{ secrets.PRIVATE_REPO_READ_TOKEN }}
-          SOURCE_SHA: f684d894a1374f7f6f5bcc383734aa47e0917dda
+          SOURCE_SHA: 96162b1dc4e05c9464a5f87ed8ff4ccd4fce4f82
         run: |
           set -euo pipefail
           status=$(curl -sS -o /dev/null -w '%{http_code}' \
