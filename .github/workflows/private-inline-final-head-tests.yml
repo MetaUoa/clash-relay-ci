@@ -1,0 +1,40 @@
+name: Private Inline Final Head Tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/private-inline-final-head-tests.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  final-head:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      PRIVATE_SHA: fdfac511361b35fb0be6c19811adfa2c32712418
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          repository: MetaUoa/clash-relay
+          ref: ${{ env.PRIVATE_SHA }}
+          ssh-key: ${{ secrets.PRIVATE_REPO_SSH_KEY }}
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Verify exact SHA
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "$PRIVATE_SHA"
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.13'
+      - name: Install development dependencies
+        shell: bash
+        run: python -m pip install -e '.[dev]' > "$RUNNER_TEMP/install.log" 2>&1
+      - name: Ruff
+        shell: bash
+        run: python -m ruff check . > "$RUNNER_TEMP/ruff.log" 2>&1 || { echo '::error::Ruff failed; details suppressed.'; exit 1; }
+      - name: Final full pytest
+        shell: bash
+        run: python -m pytest -q > "$RUNNER_TEMP/pytest.log" 2>&1 || { echo '::error::Final full pytest failed; details suppressed.'; exit 1; }
