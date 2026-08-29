@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PRIVATE_SHA: b1c6fd770cdb57a9a15e7610862e9489b6d4d11d
+  PRIVATE_SHA: f1cb35d1aed6191d88d8aeb5eadb894fa9a3ea43
 
 jobs:
   quality:
@@ -202,4 +202,4 @@ jobs:
           echo "privacy-complete=$state"
           test "$state" = success
 
-# Repeat exact-source full gate after transient Frozen Core retry confirmed core-pass.
+# Exact-source final gate including whole-render secret-value scan.
