@@ -92,3 +92,5 @@ jobs:
             "https://api.github.com/repos/MetaUoa/clash-relay/statuses/${PRIVATE_SHA}" \
             -d "$payload" > /dev/null
           echo "probe status reported: $state"
+
+# credential recheck 2026-08-29
