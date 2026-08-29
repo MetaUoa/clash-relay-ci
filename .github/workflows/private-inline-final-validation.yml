@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 env:
-  PRIVATE_SHA: 8f43ee871d702dc7617f83d833da8add345fb668
+  PRIVATE_SHA: adc2b5588aaa894a04fabe729299958a44c748b2
 
 jobs:
   quality:
