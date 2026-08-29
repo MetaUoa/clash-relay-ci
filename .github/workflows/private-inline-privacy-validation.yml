@@ -201,3 +201,5 @@ jobs:
             -d "$payload" > /dev/null
           echo "privacy-complete=$state"
           test "$state" = success
+
+# Repeat exact-source full gate after transient Frozen Core retry confirmed core-pass.
