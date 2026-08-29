@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PRIVATE_SHA: cf923ee443babb3672a2756cd5fa6787c09a8c5b
+  PRIVATE_SHA: b1c6fd770cdb57a9a15e7610862e9489b6d4d11d
 
 jobs:
   quality:
