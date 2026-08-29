@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      PRIVATE_SHA: 7455778470a08d73e9cab7453982bad89e06316f
+      PRIVATE_SHA: cf923ee443babb3672a2756cd5fa6787c09a8c5b
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
         with:
