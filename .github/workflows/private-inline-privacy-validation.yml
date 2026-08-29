@@ -1,0 +1,57 @@
+name: Private Inline Privacy Validation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/private-inline-privacy-validation.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  privacy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PRIVATE_SHA: 7455778470a08d73e9cab7453982bad89e06316f
+    steps:
+      - name: Checkout exact private source read-only
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          repository: MetaUoa/clash-relay
+          ref: ${{ env.PRIVATE_SHA }}
+          ssh-key: ${{ secrets.PRIVATE_REPO_SSH_KEY }}
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Verify exact SHA
+        shell: bash
+        run: test "$(git rev-parse HEAD)" = "$PRIVATE_SHA"
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: '3.13'
+      - name: Install development dependencies
+        shell: bash
+        run: python -m pip install -e '.[dev]' > "$RUNNER_TEMP/install.log" 2>&1
+      - name: Ruff
+        shell: bash
+        run: |
+          set +e
+          python -m ruff check . > "$RUNNER_TEMP/ruff.log" 2>&1
+          status=$?
+          if [ "$status" -ne 0 ]; then
+            echo "::error::Ruff failed; private-source details suppressed."
+            exit "$status"
+          fi
+          echo "Ruff: PASS"
+      - name: Subscription privacy regression tests
+        shell: bash
+        run: |
+          set +e
+          python -m pytest -q tests/test_subscription_url_privacy.py tests/test_config_secrets.py tests/test_gist_publisher.py > "$RUNNER_TEMP/privacy.log" 2>&1
+          status=$?
+          if [ "$status" -ne 0 ]; then
+            echo "::error::Subscription privacy tests failed; private-source details suppressed."
+            exit "$status"
+          fi
+          echo "Subscription privacy tests: PASS"
